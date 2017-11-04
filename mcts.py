@@ -134,6 +134,7 @@ def run_sim(board, wins, plays, C):
     for _player, _state in visited_states:
         if (_player, _state) not in plays:
             continue
+
         plays[(_player, _state)] += 1
         if _player == winner:
             wins[(_player, _state)] += 1

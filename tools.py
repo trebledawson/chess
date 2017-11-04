@@ -74,11 +74,11 @@ def features(board):
             white[count] = 6
             black[count] = 0
             count += 1
-    white = white.reshape(8, 8)
-    black = black.reshape(8, 8)
+    white = white.reshape(8, 8, 1)
+    black = black.reshape(8, 8, 1)
 
     # Determine current player
-    player = 0
+    player = np.array(0)
     if fen[1] == 'b':
         player += 1
 
@@ -105,5 +105,6 @@ def features(board):
             else:
                 y = ord(letter) - 97
         enpassant[-x][y] = 1
+    enpassant = enpassant.reshape(8, 8, 1)
 
     return white, black, player, castling, enpassant
