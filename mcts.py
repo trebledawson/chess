@@ -39,7 +39,6 @@ from random import choice
 from copy import deepcopy
 from tools import features
 from math import log, sqrt
-import numpy as np
 import time
 
 def mcts(board, **kwargs):
@@ -47,12 +46,9 @@ def mcts(board, **kwargs):
     thinking_time = kwargs.get('thinking_time', 10)
     C = kwargs.get('C', 1.4)
     state = deepcopy(board)
-    whi, bla, turn, cas, enp = features(state)
+    whi, bla, player, cas, enp = features(state)
     wins = {}
     plays = {}
-    player = 0
-    if np.all(turn):
-        player = 1
 
     # Evaluate legal moves at current board position
     legal = [move for move in board.generate_legal_moves()]

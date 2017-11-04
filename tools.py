@@ -13,8 +13,8 @@ def features(board):
             return s
 
     # Convert board to array
-    white = np.zeros(64).astype('int')
-    black = np.zeros(64).astype('int')
+    white = np.zeros(64).astype('float32')
+    black = np.zeros(64).astype('float32')
     count = 0
     for letter in fen[0]:
         letter = int_if_int(letter)
@@ -78,23 +78,23 @@ def features(board):
     black = black.reshape(8, 8)
 
     # Determine current player
-    turn = np.zeros((8, 8)).astype('int')
+    player = 0
     if fen[1] == 'b':
-        turn += 1
+        player += 1
 
     # Determine castling
-    castling = np.zeros((8, 8)).astype('int')
+    castling = np.zeros(4).astype('float32')
     if 'K' in fen[2]:
-        castling[7][6] = 1
+        castling[0] = 1
     if 'Q' in fen[2]:
-        castling[7][2] = 1
+        castling[1] = 1
     if 'k' in fen[2]:
-        castling[0][6] = 1
+        castling[2] = 1
     if 'q' in fen[2]:
-        castling[0][2] = 1
+        castling[3] = 1
 
     # Determine en passant
-    enpassant = np.zeros((8, 8)).astype('int')
+    enpassant = np.zeros((8, 8)).astype('float32')
     if fen[3] is not '-':
         x = 0
         y = 0
@@ -106,4 +106,4 @@ def features(board):
                 y = ord(letter) - 97
         enpassant[-x][y] = 1
 
-    return white, black, turn, castling, enpassant
+    return white, black, player, castling, enpassant
