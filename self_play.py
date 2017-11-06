@@ -1,83 +1,136 @@
 """
 Self-play arena for Brownie24.
--Loads current network model
--Plays a game to completion
--Updates network model
 """
-
+import numpy as np
+import chess
+import time
+from random import randint
 from keras.models import load_model
 from linked_mcts import mcts
-import chess
-from tools import features
-import time
+from tools import features, all_possible_moves
 
-while True:
+def self_play():
     game_start = time.time()
     model1 = load_model(filepath='G:\Glenn\Misc\Machine '
-                            'Learning\Projects\chess\models\model.h5')
+                            'Learning\Projects\chess\models\model_live.h5')
     model2 = load_model(filepath='G:\Glenn\Misc\Machine '
-                            'Learning\Projects\chess\models\model.h5')
+                            'Learning\Projects\chess\models\model_live.h5')
 
     # Initialize board and begin recording features for each board state
+    poss_moves = all_possible_moves()
     board = chess.Bitboard()
     w0, b0, p0, c0, ep0 = features(board)
-    ws = [w0]
-    bs = [b0]
-    ps = [p0]
-    cs = [c0]
-    eps = [ep0]
+    game_features = [[w0], [b0], [p0], [c0], [ep0], []]
+    move = 1
+    T = 1
 
     # Play game and record board state features for each move
     while True:
+        if move > 10:
+            T = 0.1
         # Player 1 move
-        p1move = mcts(board, model1)
-        board.push(p1move)
+        print('Player 1 is thinking...')
+        p1move, pi = mcts(board, model1, poss_moves, T=T)
+        board.push(chess.Move.from_uci(p1move))
         w, b, p, c, ep = features(board)
-        ws.append(w)
-        bs.append(b)
-        ps.append(p)
-        cs.append(c)
-        eps.append(ep)
+        game_features[0].append(w)
+        game_features[1].append(b)
+        game_features[2].append(p)
+        game_features[3].append(c)
+        game_features[4].append(ep)
+        game_features[5].append(pi)
+
+        print(board)
+        print('Player 1 plays', p1move, '\n')
+
+        if board.is_game_over():
+            winner = 0
+            print('Winner: White.')
+            print('Game duration:', time.time() - game_start, 'seconds. \n')
+            break
+
+        # Player 2 move
+        print('Player 2 is thinking...')
+        p2move, pi = mcts(board, model2, poss_moves, T=T)
+        board.push(chess.Move.from_uci(p2move))
+        w, b, p, c, ep = features(board)
+        game_features[0].append(w)
+        game_features[1].append(b)
+        game_features[2].append(p)
+        game_features[3].append(c)
+        game_features[4].append(ep)
+        game_features[5].append(pi)
+
+        print(board)
+        print('Player 2 plays', p2move, '\n')
+
+        if board.is_game_over():
+            winner = 1
+            print('Winner: Black.')
+            print('Game duration:', time.time() - game_start, 'seconds.\n')
+            break
+
+        move += 1
+
+    del model1
+    del model2
+
+    if winner == 0:
+        Z = np.empty((len(game_features[2]),1))
+        Z[::2] = 1
+        Z[1::2] = -1
+        game_features.append(Z)
+
+    else:
+        Z = np.empty((len(game_features[2]), 1))
+        Z[::2] = -1
+        Z[1::2] = 1
+        game_features.append(Z)
+
+    return game_features
+
+def evaluation():
+    train_color = randint(0, 1)
+    if train_color == 0:
+        model1 = load_model(filepath='G:\Glenn\Misc\Machine '
+                            'Learning\Projects\chess\models\model_train.h5')
+        model2 = load_model(filepath='G:\Glenn\Misc\Machine '
+                            'Learning\Projects\chess\models\model_live.h5')
+    else:
+        model1 = load_model(filepath='G:\Glenn\Misc\Machine '
+                            'Learning\Projects\chess\models\model_live.h5')
+        model2 = load_model(filepath='G:\Glenn\Misc\Machine '
+                            'Learning\Projects\chess\models\model_train.h5')
+
+    # Initialize board and begin recording features for each board state
+    poss_moves = all_possible_moves()
+    board = chess.Bitboard()
+    T = 0.00001
+
+    # Play game
+    while True:
+        # Player 1 move
+        print('Player 1 is thinking...')
+        p1move, pi = mcts(board, model1, poss_moves, T=T)
+        board.push(chess.Move.from_uci(p1move))
+
+        if board.is_game_over():
+            winner = 0
+            break
+
+        # Player 2 move
+        print('Player 2 is thinking...')
+        p2move, pi = mcts(board, model2, poss_moves, T=T)
+        board.push(chess.Move.from_uci(p2move))
 
         if board.is_game_over():
             winner = 1
             break
 
-        # Player 2 move
-        p2move = mcts(board, model2)
-        board.push(p2move)
-        w, b, p, c, ep = features(board)
-        ws.append(w)
-        bs.append(b)
-        ps.append(p)
-        cs.append(c)
-        eps.append(ep)
+    del model1
+    del model2
 
-        if board.is_game_over():
-            winner = 2
-            break
-
-    ws = ws.reshape(len(ws), 8, 8, 1)
-    bs = bs.reshape(len(bs), 8, 8, 1)
-    ps = ps.reshape(len(ps), 1)
-    cs = cs.reshape(len(cs), 4)
-    eps = eps.reshape(len(eps), 8, 8, 1)
-    train = [ws, bs, ps, cs, eps]
-
-    if winner == 1:
-        # For each state in the game, update neural network
-        model2 = model2.fit(train, 0, verbose=0)
-        model2.save(filepath='G:\Glenn\Misc\Machine '
-                    'Learning\Projects\chess\models\model.h5')
-        del model1
-        del model2
-
+    if winner == train_color:
+        return 1
     else:
-        # For each state in the game, update neural network
-        model1 = model1.fit(train, 0, verbose=0)
-        model1.save(filepath='G:\Glenn\Misc\Machine '
-                             'Learning\Projects\chess\models\model.h5')
-        del model1
-        del model2
-
-    print('Game duration:', time.time() - game_start, 'seconds.')
+        return 0
