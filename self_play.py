@@ -7,41 +7,42 @@ import time
 from random import randint
 from keras.models import load_model
 from linked_mcts import mcts
-from tools import features, all_possible_moves
+from tools import all_possible_moves, SearchTree
 
+# This self-play function is used to generate training data
 def self_play():
     game_start = time.time()
-    model1 = load_model(filepath='G:\Glenn\Misc\Machine '
-                            'Learning\Projects\chess\models\model_live.h5')
-    model2 = load_model(filepath='G:\Glenn\Misc\Machine '
-                            'Learning\Projects\chess\models\model_live.h5')
+    model1 = load_model(filepath='C:\Glenn\Stuff\Machine '
+                        'Learning\chess\models\model_live.h5')
+    model2 = load_model(filepath='C:\Glenn\Stuff\Machine '
+                        'Learning\chess\models\model_live.h5')
 
     # Initialize board and begin recording features for each board state
     poss_moves = all_possible_moves()
     board = chess.Bitboard()
-    w0, b0, p0, c0, ep0 = features(board)
-    game_features = [[w0], [b0], [p0], [c0], [ep0], []]
+    game_record = [[board], []]
+    p1tree = SearchTree()
+    p2tree = SearchTree()
     move = 1
     T = 1
 
     # Play game and record board state features for each move
+    print('Game start.')
     while True:
+        # Determine temperature coefficient by game length
         if move > 10:
             T = 0.1
+
         # Player 1 move
         print('Player 1 is thinking...')
-        p1move, pi = mcts(board, model1, poss_moves, T=T)
+        p1move, pi, p1tree, index = mcts(board, model1, poss_moves, T=T,
+                                         tree=p1tree)
         board.push(chess.Move.from_uci(p1move))
-        w, b, p, c, ep = features(board)
-        game_features[0].append(w)
-        game_features[1].append(b)
-        game_features[2].append(p)
-        game_features[3].append(c)
-        game_features[4].append(ep)
-        game_features[5].append(pi)
+        game_record[0].append(board)
+        game_record[1].append(pi)
 
         print(board)
-        print('Player 1 plays', p1move, '\n')
+        print('Player 1: ', move, '. ', p1move, '\n', sep='')
 
         if board.is_game_over():
             winner = 0
@@ -49,20 +50,19 @@ def self_play():
             print('Game duration:', time.time() - game_start, 'seconds. \n')
             break
 
+        if move != 1:
+            p2tree = p2tree.nodes[index]
+
         # Player 2 move
         print('Player 2 is thinking...')
-        p2move, pi = mcts(board, model2, poss_moves, T=T)
+        p2move, pi, p2tree, index = mcts(board, model2, poss_moves, T=T,
+                                         tree=p2tree)
         board.push(chess.Move.from_uci(p2move))
-        w, b, p, c, ep = features(board)
-        game_features[0].append(w)
-        game_features[1].append(b)
-        game_features[2].append(p)
-        game_features[3].append(c)
-        game_features[4].append(ep)
-        game_features[5].append(pi)
+        game_record[0].append(board)
+        game_record[1].append(pi)
 
         print(board)
-        print('Player 2 plays', p2move, '\n')
+        print('Player 2: ', move, '... ', p2move, '\n', sep='')
 
         if board.is_game_over():
             winner = 1
@@ -70,48 +70,52 @@ def self_play():
             print('Game duration:', time.time() - game_start, 'seconds.\n')
             break
 
+        p1tree = p1tree.nodes[index]
+
         move += 1
 
     del model1
     del model2
+    del game_record[0][-1]
 
     if winner == 0:
-        Z = np.empty((len(game_features[2]),1))
+        Z = np.empty((len(game_record[0]),1))
         Z[::2] = 1
         Z[1::2] = -1
-        game_features.append(Z)
+        game_record.append(Z)
 
     else:
-        Z = np.empty((len(game_features[2]), 1))
+        Z = np.empty((len(game_record[0]), 1))
         Z[::2] = -1
         Z[1::2] = 1
-        game_features.append(Z)
+        game_record.append(Z)
 
-    return game_features
+    return game_record
 
+# This self-play function is used to determine the new generator model
 def evaluation():
     train_color = randint(0, 1)
     if train_color == 0:
-        model1 = load_model(filepath='G:\Glenn\Misc\Machine '
-                            'Learning\Projects\chess\models\model_train.h5')
-        model2 = load_model(filepath='G:\Glenn\Misc\Machine '
-                            'Learning\Projects\chess\models\model_live.h5')
+        model1 = load_model(filepath='C:\Glenn\Stuff\Machine '
+                            'Learning\chess\models\model_train.h5')
+        model2 = load_model(filepath='C:\Glenn\Stuff\Machine '
+                            'Learning\chess\models\model_live.h5')
     else:
-        model1 = load_model(filepath='G:\Glenn\Misc\Machine '
-                            'Learning\Projects\chess\models\model_live.h5')
-        model2 = load_model(filepath='G:\Glenn\Misc\Machine '
-                            'Learning\Projects\chess\models\model_train.h5')
+        model1 = load_model(filepath='C:\Glenn\Stuff\Machine '
+                            'Learning\chess\models\model_live.h5')
+        model2 = load_model(filepath='C:\Glenn\Stuff\Machine '
+                            'Learning\chess\models\model_train.h5')
 
     # Initialize board and begin recording features for each board state
     poss_moves = all_possible_moves()
     board = chess.Bitboard()
-    T = 0.00001
+    T = 0.01
 
     # Play game
     while True:
         # Player 1 move
         print('Player 1 is thinking...')
-        p1move, pi = mcts(board, model1, poss_moves, T=T)
+        p1move, _ = mcts(board, model1, poss_moves, T=T)
         board.push(chess.Move.from_uci(p1move))
 
         if board.is_game_over():
@@ -120,7 +124,7 @@ def evaluation():
 
         # Player 2 move
         print('Player 2 is thinking...')
-        p2move, pi = mcts(board, model2, poss_moves, T=T)
+        p2move, _ = mcts(board, model2, poss_moves, T=T)
         board.push(chess.Move.from_uci(p2move))
 
         if board.is_game_over():
