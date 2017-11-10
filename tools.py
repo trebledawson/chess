@@ -2,20 +2,18 @@
 Toolbox of helper functions:
 ----------
 The SearchTree class is a decision tree that is iteratively generated during
-the MCTS algorithm
+the MCTS algorithm.
 ----------
 The features() function accepts a chess.Bitboard() object and returns:
 -(8x8x1) numpy array of white piece locations
 -(8x8x1) numpy array of black piece locations
 -(1x1) numpy array of current player information
--(1x4) numpy array of castling availability
--(8x8x1) numpy array of en passant availability)
 ---------
 The all_possible_moves() function returns a list of all 1968 possible moves
-on a chessboard in UCI notation in alphabetical order
+on a chessboard in UCI notation in alphabetical order.
 ---------
 The get_move() function is used to select a move based on DeepMind's modified
-PUCT equation
+PUCT equation.
 ---------
 The get_pi() function is used to obtain the probability distribution of each
 legal move in a given board state.
@@ -126,32 +124,7 @@ def features(board):
     if fen[1] == 'b':
         player += 1
 
-    # Determine castling
-    castling = np.zeros(4).astype('float32')
-    if 'K' in fen[2]:
-        castling[0] = 1
-    if 'Q' in fen[2]:
-        castling[1] = 1
-    if 'k' in fen[2]:
-        castling[2] = 1
-    if 'q' in fen[2]:
-        castling[3] = 1
-
-    # Determine en passant
-    enpassant = np.zeros((8, 8)).astype('float32')
-    if fen[3] is not '-':
-        x = 0
-        y = 0
-        for letter in fen[3]:
-            letter = int_if_int(letter)
-            if letter in range(8):
-                x = letter
-            else:
-                y = ord(letter) - 97
-        enpassant[-x][y] = 1
-    enpassant = enpassant.reshape(8, 8, 1)
-
-    return white, black, player, castling, enpassant
+    return white, black, player
 
 def all_possible_moves():
     moves = []
