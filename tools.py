@@ -30,18 +30,14 @@ class SearchTree:
         Q = kwargs.get('Q', 0)
         P = kwargs.get('P', 0)
         name = kwargs.get('name', 0000)
-        self.state = 0
         self.nodes = []
         self.data = [N, W, Q, P]
         self.name = name
 
     def create_node(self, **kwargs):
-        N = kwargs.get('N', 0)
-        W = kwargs.get('W', 0)
-        Q = kwargs.get('Q', 0)
         P = kwargs.get('P', 0)
         name = kwargs.get('name', 0000)
-        self.nodes.append(SearchTree(N=N, W=W, Q=Q, P=P, name=name))
+        self.nodes.append(SearchTree(P=P, name=name))
 
 def features(board):
     fen = board.fen().split()
@@ -1228,32 +1224,24 @@ def all_possible_moves():
     return moves
 
 def get_move(edges, C):
-    edges = np.ma.array(edges)
+    edges = np.array(edges)
     U = np.zeros(len(edges))
     for move in range(len(edges)):
-        temp = edges[move, 0]               # Save current move N-value
-        edges[move, 0] = np.ma.masked       # Mask current move N-value
-
-        # Calculate U
-        frac = (sqrt(np.sum(edges[:, 0], axis=0))) / (1 + temp)
+        frac = (sqrt(np.sum(edges[:, 0]))) / (1 + edges[move, 0])
         P = edges[move, 3]
         U[move] = C * P * frac
-
-        edges[move, 0] = temp               # Replace current move N-value
 
     a = edges[:, 2] + U
     return np.random.choice(np.flatnonzero(a == a.max()))
 
 def get_pi(visits, T):
     pow = 1 / T
-    visits = np.ma.array(np.ravel(visits))
+    visits = np.array(np.ravel(visits))
     pi = np.zeros(len(visits))
     for move in range(len(visits)):
-        temp = visits[move]                  # Save current move N-value
-        visits[move] = np.ma.masked          # Mask current move N-value
-        # Calculate pi
-        pi[move] = (temp ** pow) / np.sum(visits ** pow)
-
-        visits[move] = temp                  # Replace current move N-value
+        pi_m = (visits[move] ** pow) / np.sum(visits ** pow)
+        if pi_m == np.inf:
+            pi_m = 1
+        pi[move] = pi_m
 
     return pi

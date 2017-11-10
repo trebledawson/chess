@@ -3,8 +3,7 @@ This script allows users to play chess against algorithms
 Current algorithm: Pure MCTS, no parallelization
 """
 import chess
-from mcts import mcts
-import time
+from linked_mcts import mcts
 
 def main():
     print('Welcome to my chess game!', '\n')

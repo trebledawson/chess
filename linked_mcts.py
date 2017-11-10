@@ -14,16 +14,13 @@ import time
 
 def mcts(board, model, poss_moves, **kwargs):
     C = kwargs.get('C', 1.4)
-    thinking_time = kwargs.get('thinking_time', 10)
+    thinking_time = kwargs.get('thinking_time', 3)
     T = kwargs.get('T', 0.0001)
     tree = kwargs.get('tree', SearchTree())
     state = deepcopy(board)
     legal = sorted([move.uci() for move in board.generate_legal_moves()])
 
-    # If only one legal move, return that move
-    if len(legal) == 1:
-        return legal[0]
-
+    # Perform MCTS only if there is more than one legal move
     start = time.time()
     w, b, p = features(board)
     w = w.reshape(1, 8, 8, 1)
@@ -45,7 +42,7 @@ def mcts(board, model, poss_moves, **kwargs):
         for child_node in tree.nodes:
             if child_node.name == san:
                 # Add Dirichlet noise to prior for node that already exists
-                # for node
+                # for move
                 prior = child_node.data[3]
                 noise = np.random.dirichlet([0.03, 0.03])
                 child_node.data[3] = ((1 - epsilon) * prior) + \
@@ -56,7 +53,7 @@ def mcts(board, model, poss_moves, **kwargs):
 
     # While elapsed time < thinking time, search tree:
     simulations = 0
-    while time.time() - start < thinking_time:
+    while simulations < 1 or time.time() - start < thinking_time:
         tree = iteration(tree, model, state, C, poss_moves)
         simulations += 1
     print('Simulations:', simulations, '| Thinking time:', time.time() -
@@ -77,7 +74,7 @@ def mcts(board, model, poss_moves, **kwargs):
     return move, pi, tree, index
 
 def iteration(tree, model, board, C, poss_moves, **kwargs):
-    search_depth = kwargs.get('search_depth', 100)      # 50 fullmoves
+    search_depth = kwargs.get('search_depth', 50)      # 25 fullmoves
     state = deepcopy(board)
     is_winner = False
     state_ = 0
@@ -88,19 +85,8 @@ def iteration(tree, model, board, C, poss_moves, **kwargs):
 
     # Traverse tree until end of game or search depth is reached
     while not is_winner and depth < search_depth:
-        # Generate legal moves in position and populate node with leaves
+        # Generate legal moves in position
         legal = sorted([move.uci() for move in state.generate_legal_moves()])
-        indices = [poss_moves.index(move) for move in legal]
-        w, b, p = features(state)
-        w = w.reshape(1, 8, 8, 1)
-        b = b.reshape(1, 8, 8, 1)
-        p = p.reshape(1, 1)
-        priors, value = model.predict([w, b, p], verbose=0)
-        priors = np.ravel(priors)
-        value = np.ravel(value)
-
-        for move, san in zip(range(len(legal)), legal):
-            nodes_update(node, priors, indices, move, san)
 
         # Select move
         if len(legal) == 1:
@@ -117,6 +103,20 @@ def iteration(tree, model, board, C, poss_moves, **kwargs):
         # Update evaluation node
         node = node.nodes[index]
         nodes.append(node)
+
+        # Evaluate and expand
+        legal = sorted([move.uci() for move in state.generate_legal_moves()])
+        indices = [poss_moves.index(move) for move in legal]
+        w, b, p = features(state)
+        w = w.reshape(1, 8, 8, 1)
+        b = b.reshape(1, 8, 8, 1)
+        p = p.reshape(1, 1)
+        priors, value = model.predict([w, b, p], verbose=0)
+        priors = np.ravel(priors)
+        value = np.ravel(value)
+
+        for move, san in zip(range(len(legal)), legal):
+            nodes_update(node, priors, indices, move, san)
 
         # Bookkeeping
         is_winner = state.is_game_over()
@@ -152,6 +152,4 @@ def nodes_backup(node, i, value):
     node.nodes[i].data[0] += 1
     node.nodes[i].data[1] += value
     node.nodes[i].data[2] = node.nodes[i].data[1] / node.nodes[i].data[0]
-    for child_node in node.nodes:
-        if child_node.data[0] == 0:
-            del child_node
+
