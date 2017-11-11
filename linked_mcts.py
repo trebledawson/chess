@@ -4,11 +4,11 @@ architecture. Utilizes a neural network to evaluate positions and selects
 moves based on node visits.
 """
 
-from copy import deepcopy
-from tools import features, get_move, SearchTree, get_pi
 import chess
 import numpy as np
 import time
+from copy import deepcopy
+from tools import features, get_move, SearchTree, get_pi
 
 # TODO: Parallelize iteration() to run multiple simulations simultaneously
 

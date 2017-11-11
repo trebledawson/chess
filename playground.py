@@ -1,10 +1,10 @@
 """
 Playground for testing things
 """
-from self_play import self_play
+
 import pickle
 import time
-
+from self_play import self_play
 
 def main():
     games = 0

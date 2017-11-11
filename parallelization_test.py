@@ -4,18 +4,17 @@ architecture. Utilizes a neural network to evaluate positions and selects
 moves based on node visits.
 """
 
-from copy import deepcopy
-from tools import features, get_move, SearchTree, get_pi
 import chess
 import numpy as np
-from multiprocessing import Process, Queue, Value
 import time
+from multiprocessing import Process, Queue, Value
+from copy import deepcopy
+from tools import features, get_move, SearchTree, get_pi
 
 # TODO: Parallelize iteration() to run multiple simulations simultaneously
 
 
 def mcts(board, poss_moves, pipes_sim, **kwargs):
-    print('check 3')
     C = kwargs.get('C', 1.4)
     thinking_time = kwargs.get('thinking_time', 3)
     T = kwargs.get('T', 0.0001)
@@ -25,7 +24,6 @@ def mcts(board, poss_moves, pipes_sim, **kwargs):
 
     start = time.time()
 
-    print('check 4')
     w, b, p = features(board)
     w = w.reshape(1, 8, 8, 1)
     b = b.reshape(1, 8, 8, 1)
@@ -35,7 +33,7 @@ def mcts(board, poss_moves, pipes_sim, **kwargs):
         time.sleep(0.001)
     priors, value = pipes_sim[0].recv()
     priors = np.ravel(priors)
-    print('check 5')
+
     # Add Dirichlet noise to priors in root node
     noise = np.ravel(np.random.dirichlet([0.03, 0.03],
                                          size=len(priors)).reshape(1, -1))
@@ -58,7 +56,6 @@ def mcts(board, poss_moves, pipes_sim, **kwargs):
 
         tree.create_node(P=priors[indices[move]], name=san)
 
-    print('check 6')
     # While elapsed time < thinking time, search tree:
     simulations = Value('I', 0)
     tree_queue = Queue()
@@ -82,7 +79,6 @@ def mcts(board, poss_moves, pipes_sim, **kwargs):
         best = np.random.choice(np.flatnonzero(Q_values == Q_values.max()))
         tree.nodes[node] = trees[best].nodes[node]
 
-    print('check 9')
     # Select move
     visits = [tree.nodes[move].data[0] for move in range(len(legal))]
     probs = get_pi(visits, T)
@@ -92,24 +88,20 @@ def mcts(board, poss_moves, pipes_sim, **kwargs):
     index = np.random.choice(np.flatnonzero(probs == probs.max()))
     move = legal[index]
 
-    print('check 10')
     # Prune tree for reuse in future searches
     tree = tree.nodes[index]
 
-    print('check 11')
     return move, pi, tree, index
 
 
 def parallel_simulation(tree, state, C, poss_moves, pipe_sim, start,
                         thinking_time, simulations, tree_queue):
-    print('check 7')
     tree_p = deepcopy(tree)
     while simulations.value < 1 or time.time() - start < thinking_time:
         tree_p = iteration(tree_p, state, C, poss_moves, pipe_sim)
         with simulations.get_lock():
             simulations.value += 1
     tree_queue.put(tree_p)
-    print('check 8')
 
 
 def iteration(tree, board, C, poss_moves, pipe_sim, **kwargs):

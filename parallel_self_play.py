@@ -13,7 +13,6 @@ from multiprocessing import Process, Pipe, cpu_count
 
 # This self-play function is used to generate training data
 def self_play():
-    print('check 1')
     game_start = time.time()
 
     # Initialize neural network daemon
@@ -28,7 +27,6 @@ def self_play():
     nn_p.daemon = True
     nn_p.start()
 
-    print('check 2')
     # Initialize board and begin recording features for each board state
     poss_moves = all_possible_moves()
     board = chess.Bitboard()
