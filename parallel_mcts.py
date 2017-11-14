@@ -7,7 +7,7 @@ moves based on node visits.
 import chess
 import numpy as np
 import time
-from multiprocessing import Process, Queue, Value
+from multiprocessing import Process, Queue
 from copy import deepcopy
 from tools import features, get_move, SearchTree, get_pi
 
@@ -15,14 +15,13 @@ from tools import features, get_move, SearchTree, get_pi
 
 
 def mcts(board, poss_moves, pipes_sim, **kwargs):
+    start = time.time()
     C = kwargs.get('C', 1.4)
     thinking_time = kwargs.get('thinking_time', 3)
     T = kwargs.get('T', 0.0001)
     tree = kwargs.get('tree', SearchTree())
     state = deepcopy(board)
     legal = sorted([move.uci() for move in board.generate_legal_moves()])
-
-    start = time.time()
 
     w, b, p = features(board.fen())
     w = w.reshape(1, 8, 8, 1)
@@ -57,26 +56,33 @@ def mcts(board, poss_moves, pipes_sim, **kwargs):
         tree.create_node(P=priors[indices[move]], name=san)
 
     # While elapsed time < thinking time, search tree:
-    simulations = Value('I', 0)
     tree_queue = Queue()
+    sim_queue = Queue()
+    sims = []
     for worker in range(len(pipes_sim)):
         pipe_sim = pipes_sim[worker]
         sim = Process(target=parallel_simulation,
                       args=(tree, state, C, poss_moves, pipe_sim, start,
-                            thinking_time, simulations, tree_queue))
+                            thinking_time, tree_queue, sim_queue))
+        sims.append(sim)
         sim.start()
-    print('Simulations:', simulations.value, '| Thinking time:', time.time() -
+    trees = []
+    simulations = []
+
+    while len(simulations) < len(sims):
+        trees.append(tree_queue.get())
+        simulations.append(sim_queue.get())
+        time.sleep(0.00001)
+
+    print('Simulations:', sum(simulations), '| Thinking time:', time.time() -
           start, 'seconds.')
 
     # Update master tree nodes based on best Q-values of simulated tree nodes
-    trees = []
-    while not tree_queue.empty():
-        trees.append(tree_queue.get())
     for node in range(len(tree.nodes)):
         Q_values = np.zeros(len(trees))
         for tree_ in range(len(trees)):
             Q_values[tree_] = trees[tree_].nodes[node].data[2]
-        best = np.random.choice(np.flatnonzero(Q_values == Q_values.max()))
+        best = np.random.choice(np.where(Q_values == Q_values.max())[0])
         tree.nodes[node] = trees[best].nodes[node]
 
     # Select move
@@ -85,7 +91,7 @@ def mcts(board, poss_moves, pipes_sim, **kwargs):
     pi = np.zeros(priors.shape)
     for index, probability in zip(indices, probs):
         pi[index] = probability
-    index = np.random.choice(np.flatnonzero(probs == probs.max()))
+    index = np.random.choice(np.where(probs == probs.max())[0])
     move = legal[index]
 
     # Prune tree for reuse in future searches
@@ -95,18 +101,19 @@ def mcts(board, poss_moves, pipes_sim, **kwargs):
 
 
 def parallel_simulation(tree, state, C, poss_moves, pipe_sim, start,
-                        thinking_time, simulations, tree_queue):
+                        thinking_time, tree_queue, sim_queue):
     tree_p = deepcopy(tree)
-    while simulations.value < 1 or time.time() - start < thinking_time:
+    simulations = 0
+    while simulations < 1 or time.time() - start < thinking_time:
         tree_p = iteration(tree_p, state, C, poss_moves, pipe_sim)
-        with simulations.get_lock():
-            simulations.value += 1
+        simulations += 1
     tree_queue.put(tree_p)
+    sim_queue.put(simulations)
 
 
 def iteration(tree, board, C, poss_moves, pipe_sim, **kwargs):
     node = tree
-    search_depth = kwargs.get('search_depth', 100)      # 50 fullmoves
+    search_depth = kwargs.get('search_depth', 50)      # 25 fullmoves
     state = deepcopy(board)
     is_winner = False
     state_ = 0

@@ -16,11 +16,11 @@ import pickle
 import numpy as np
 from tools import features
 from self_play import evaluation
-from keras.models import load_model
 from keras.callbacks import EarlyStopping
 
 
 def main():
+    from keras.models import load_model
     file_Name = "C:\Glenn\Stuff\Machine " \
                 "Learning\chess\\records\\brownie24_self_play_records.pickle"
     fileObject = open(file_Name, 'rb')
@@ -60,6 +60,7 @@ def main():
 
 
 def evaluate():
+    from keras.models import load_model
     train_wins = 0.
     for evaluation_game in range(100):
         train_win = evaluation()

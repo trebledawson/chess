@@ -4,7 +4,7 @@ Playground for testing things
 
 import pickle
 import time
-from self_play import self_play
+from parallel_self_play import self_play
 
 def main():
     record = [0, 0, 0]

@@ -5,9 +5,8 @@ import numpy as np
 import chess
 import time
 from random import randint
-from keras.models import load_model
-from parallelization_test import mcts
-from tools import all_possible_moves, SearchTree
+from parallel_mcts import mcts
+from tools import all_possible_moves, SearchTree, features
 from copy import deepcopy
 from multiprocessing import Process, Pipe, cpu_count
 
@@ -19,7 +18,7 @@ def self_play():
     modelpath = 'C:\Glenn\Stuff\Machine Learning\chess\models\model_live.h5'
     pipes_net = []
     pipes_sim = []
-    for worker in range(cpu_count()):
+    for worker in range(cpu_count() - 1):
         p1, p2 = Pipe()
         pipes_net.append(p1)
         pipes_sim.append(p2)
@@ -35,6 +34,16 @@ def self_play():
     p2tree = SearchTree()
     move = 1
     T = 1
+
+    # Start daemon
+    w, b, p = features(board.fen())
+    w = w.reshape(1, 8, 8, 1)
+    b = b.reshape(1, 8, 8, 1)
+    p = p.reshape(1, 1)
+    pipes_sim[0].send([w, b, p])
+    while not pipes_sim[0].poll():
+        time.sleep(0.0000001)
+    prior_, value_ = pipes_sim[0].recv()
 
     # Play game and record board state features for each move
     print('Game start.')
@@ -249,6 +258,7 @@ def evaluation():
 
 
 def nn_daemon(modelpath, pipes_net):
+    from keras.models import load_model
     model = load_model(filepath=modelpath)
 
     while True:
