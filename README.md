@@ -1,4 +1,4 @@
 # Chess AI modeled after DeepMind's AlphaGo Zero.
 
-#TODO:
+# TODO:
 * Train neural network.
