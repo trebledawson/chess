@@ -22,7 +22,7 @@ def mcts(board, model, poss_moves, **kwargs):
 
     # Perform MCTS only if there is more than one legal move
     start = time.time()
-    w, b, p = features(board)
+    w, b, p = features(board.fen())
     w = w.reshape(1, 8, 8, 1)
     b = b.reshape(1, 8, 8, 1)
     p = p.reshape(1, 1)
@@ -107,7 +107,7 @@ def iteration(tree, model, board, C, poss_moves, **kwargs):
         # Evaluate and expand
         legal = sorted([move.uci() for move in state.generate_legal_moves()])
         indices = [poss_moves.index(move) for move in legal]
-        w, b, p = features(state)
+        w, b, p = features(state.fen())
         w = w.reshape(1, 8, 8, 1)
         b = b.reshape(1, 8, 8, 1)
         p = p.reshape(1, 1)

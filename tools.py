@@ -39,8 +39,8 @@ class SearchTree:
         name = kwargs.get('name', 0000)
         self.nodes.append(SearchTree(P=P, name=name))
 
-def features(board):
-    fen = board.fen().split()
+def features(boardfen):
+    fen = boardfen.split()
 
     # Self-contained type checker
     def int_if_int(s):

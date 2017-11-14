@@ -26,8 +26,7 @@ def main():
     fileObject = open(file_Name, 'rb')
     game_records = pickle.load(fileObject)
     fileObject.close()
-    training_model = load_model(filepath='C:\Glenn\Stuff\Machine '
-                                         'Learning\chess\models\model_train.h5')
+
     early = EarlyStopping(patience=15, verbose=0)
     sample_size = 2858
     for training_epoch in range(100):
@@ -46,15 +45,17 @@ def main():
             ps[sample] = p
             pis[sample] = game_records[1][sample_indices[sample]]
             results[sample] = game_records[2][sample_indices[sample]]
-            print('sample:', sample)
             sample += 1
 
+        training_model = load_model(filepath='C:\Glenn\Stuff\Machine '
+                                             'Learning\chess\models\model_train.h5')
         training_model.fit([ws, bs, ps], [pis, results], batch_size=1000,
                            epochs=300, verbose=2, callbacks=[early],
                            validation_split=0.3)
         training_model.save(filepath='C:\Glenn\Stuff\Machine '
                             'Learning\chess\models\model_train.h5')
-    del training_model
+        del training_model
+
     evaluate()
 
 

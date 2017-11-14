@@ -24,7 +24,7 @@ def self_play():
     # Initialize board and begin recording features for each board state
     poss_moves = all_possible_moves()
     board = chess.Bitboard()
-    game_record = [[deepcopy(board)], [], []]
+    game_record = [[board.fen()], [], []]
     p1tree = SearchTree()
     p2tree = SearchTree()
     move = 1
@@ -42,7 +42,7 @@ def self_play():
         p1move, pi, p1tree, index = mcts(board, model1, poss_moves,
                                          T=T, tree=p1tree)
         board.push(chess.Move.from_uci(p1move))
-        game_record[0].append(deepcopy(board))
+        game_record[0].append(board.fen())
         game_record[1].append(deepcopy(pi))
 
         print(board)
@@ -70,7 +70,7 @@ def self_play():
         p2move, pi, p2tree, index = mcts(board, model2, poss_moves,
                                          T=T, tree=p2tree)
         board.push(chess.Move.from_uci(p2move))
-        game_record[0].append(deepcopy(board))
+        game_record[0].append(board.fen())
         game_record[1].append(deepcopy(pi))
 
         print(board)
