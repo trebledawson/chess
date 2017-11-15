@@ -4,7 +4,7 @@
 #  MCTS and Neural Network architecture adapted from DeepMind's AlphaGo Zero  #
 ###############################################################################
 import numpy as np
-from self_play import self_play, evaluation
+from parallel_self_play import self_play, evaluation
 from random import randint
 from keras.models import load_model
 import pickle
@@ -16,9 +16,11 @@ def main():
     TODO:
     [X] Write script that generates games of self-play data
         See: playground.py
-    [ ] Write script that trains new neural network using generated self-play data
+    [X] Write script that trains new neural network using generated self-play data
+        See: training.py
     [X] Write script that evaluates trained network against current generator network
         See: playground.py
+    [ ] Parallelize these scripts to run in tandem
     """
 
     

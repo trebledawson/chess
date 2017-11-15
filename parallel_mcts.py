@@ -11,9 +11,6 @@ from multiprocessing import Process, Queue
 from copy import deepcopy
 from tools import features, get_move, SearchTree, get_pi
 
-# TODO: Parallelize iteration() to run multiple simulations simultaneously
-
-
 def mcts(board, poss_moves, pipes_sim, **kwargs):
     start = time.time()
     C = kwargs.get('C', 1.4)
@@ -91,8 +88,8 @@ def mcts(board, poss_moves, pipes_sim, **kwargs):
     pi = np.zeros(priors.shape)
     for index, probability in zip(indices, probs):
         pi[index] = probability
-    index = np.random.choice(np.where(probs == probs.max())[0])
-    move = legal[index]
+    move = np.random.choice(legal, p=probs)
+    index = legal.index(move)
 
     # Prune tree for reuse in future searches
     tree = tree.nodes[index]

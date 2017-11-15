@@ -9,7 +9,7 @@ from parallel_self_play import self_play
 def main():
     record = [0, 0, 0]
     games = 0
-    while games < 50:
+    while games < 5:
         generate_game(games, record)
         print(record)
         time.sleep(15)

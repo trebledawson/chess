@@ -15,7 +15,7 @@ becomes the new generator network. This process then repeats.
 import pickle
 import numpy as np
 from tools import features
-from self_play import evaluation
+from parallel_self_play import evaluation
 from keras.callbacks import EarlyStopping
 
 
