@@ -16,20 +16,23 @@ import pickle
 import numpy as np
 from tools import features
 from parallel_self_play import evaluation
-from keras.callbacks import EarlyStopping
 
 
 def main():
     from keras.models import load_model
+    from keras.callbacks import EarlyStopping
+
     file_Name = "C:\Glenn\Stuff\Machine " \
                 "Learning\chess\\records\\brownie24_self_play_records.pickle"
     fileObject = open(file_Name, 'rb')
     game_records = pickle.load(fileObject)
     fileObject.close()
 
-    early = EarlyStopping(patience=15, verbose=0)
-    sample_size = 2858
+    early = EarlyStopping(patience=20, verbose=0)
+    sample_size = 3000
     for training_epoch in range(100):
+        print('Training epoch:', training_epoch, '\n')
+
         ws = np.zeros((sample_size, 8, 8, 1))
         bs = np.zeros((sample_size, 8, 8, 1))
         ps = np.zeros((sample_size, 1))
@@ -49,18 +52,14 @@ def main():
 
         training_model = load_model(filepath='C:\Glenn\Stuff\Machine '
                                              'Learning\chess\models\model_train.h5')
-        training_model.fit([ws, bs, ps], [pis, results], batch_size=1000,
+        training_model.fit([ws, bs, ps], [pis, results], batch_size=200,
                            epochs=300, verbose=2, callbacks=[early],
                            validation_split=0.3)
         training_model.save(filepath='C:\Glenn\Stuff\Machine '
                             'Learning\chess\models\model_train.h5')
         del training_model
 
-    evaluate()
-
-
 def evaluate():
-    from keras.models import load_model
     train_wins = 0.
     for evaluation_game in range(100):
         train_win = evaluation()
@@ -68,7 +67,8 @@ def evaluate():
 
     print(train_wins)
 
-    if train_wins >= 55:
+    if train_wins >= 50:
+        from keras.models import load_model
         model = load_model('G:\Glenn\Misc\Machine '
                            'Learning\Projects\chess\models\model_train.h5')
         model.save(filepath='G:\Glenn\Misc\Machine '

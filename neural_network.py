@@ -44,8 +44,7 @@ from keras.layers import Conv2D, Dense, Input, Add, Flatten, Concatenate, \
 from keras.regularizers import l2
 
 def main():
-    # Planar inputs containing white pieces, black pieces, and en passant
-    # availability information.
+    # Planar inputs containing white pieces and black pieces information
     w = Input((8, 8, 1))
     b = Input((8, 8, 1))
 
@@ -82,7 +81,7 @@ def main():
     r3f = Add()([r3e, r2g])
     r3g = Activation('relu')(r3f)
 
-    # Scalar inputs containing current player and castling availability information
+    # Scalar inputs containing current player information
     p = Input((1,))
 
     # Policy layers
@@ -93,7 +92,8 @@ def main():
     p5 = Concatenate()([p, p4])
     p6 = Dense(256, activity_regularizer=l2(l=0.0001))(p5)
     p7 = Activation('relu')(p6)
-    probabilities = Dense(1968, activity_regularizer=l2(l=0.0001))(p7)
+    p8 = Dense(1968, activity_regularizer=l2(l=0.0001))(p7)
+    probabilities = Activation('softmax')(p8)
 
     # Value layers
     v1 = Conv2D(1, 1, activity_regularizer=l2(l=0.0001))(r3g)
@@ -108,9 +108,10 @@ def main():
 
     # Compilation
     model = Model(inputs=[w, b, p], outputs=[probabilities, value])
-    model.compile(optimizer='nadam', loss={'dense_2':
+
+    model.compile(optimizer='nadam', loss={'activation_10':
                                                'categorical_crossentropy',
-                                           'activation_12':
+                                       'activation_13':
                                                'mean_squared_error'})
     model.summary()
 
@@ -119,3 +120,6 @@ def main():
 
     model.save(filepath='C:\Glenn\Stuff\Machine '
                         'Learning\chess\models\model_live.h5')
+
+if __name__ == '__main__':
+    main()

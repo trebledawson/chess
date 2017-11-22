@@ -11,6 +11,7 @@ from multiprocessing import Process, Queue
 from copy import deepcopy
 from tools import features, get_move, SearchTree, get_pi
 
+
 def mcts(board, poss_moves, pipes_sim, **kwargs):
     start = time.time()
     C = kwargs.get('C', 1.4)
@@ -84,17 +85,40 @@ def mcts(board, poss_moves, pipes_sim, **kwargs):
 
     # Select move
     visits = [tree.nodes[move].data[0] for move in range(len(legal))]
-    probs = get_pi(visits, T)
-    pi = np.zeros(priors.shape)
-    for index, probability in zip(indices, probs):
-        pi[index] = probability
-    move = np.random.choice(legal, p=probs)
+    if sum(visits) > 0:
+        probs = get_pi(visits, T)
+        pi = np.zeros(priors.shape)
+        for index, probability in zip(indices, probs):
+            pi[index] = probability
+        move = np.random.choice(legal, p=probs)
+    else:
+        pi = priors
+        move = np.random.choice(legal)
     index = legal.index(move)
 
     # Prune tree for reuse in future searches
     tree = tree.nodes[index]
 
-    return move, pi, tree, index
+    # If all simulated Q values were negative, seed leaves for new position
+    if tree.data[2] == 0:
+        state.push(chess.Move.from_uci(move))
+
+        w, b, p = features(state.fen())
+        w = w.reshape(1, 8, 8, 1)
+        b = b.reshape(1, 8, 8, 1)
+        p = p.reshape(1, 1)
+        pipes_sim[0].send([w, b, p])
+        while not pipes_sim[0].poll():
+            time.sleep(0.001)
+        priors, value = pipes_sim[0].recv()
+        priors = np.ravel(priors)
+
+        legal = [move_.uci() for move_ in state.generate_legal_moves()]
+        indices = [poss_moves.index(move_) for move_ in legal]
+        for move_, san in zip(range(len(legal)), legal):
+            nodes_update(tree, priors, indices, move_, san)
+
+    return move, pi, tree, index, tree.data[2]
 
 
 def parallel_simulation(tree, state, C, poss_moves, pipe_sim, start,
@@ -151,7 +175,7 @@ def iteration(tree, board, C, poss_moves, pipe_sim, **kwargs):
             time.sleep(0.0000001)
         priors, value = pipe_sim.recv()
         priors = np.ravel(priors)
-        value = np.ravel(value)
+        value = value[0][0]
 
         for move, san in zip(range(len(legal)), legal):
             nodes_update(node, priors, indices, move, san)

@@ -45,6 +45,9 @@ def self_play():
         time.sleep(0.0000001)
     prior_, value_ = pipes_sim[0].recv()
 
+    del prior_
+    del value_
+
     # Play game and record board state features for each move
     print('Game start.')
     while True:
@@ -54,14 +57,14 @@ def self_play():
 
         # Player 1 move
         print('Player 1 is thinking...')
-        p1move, pi, p1tree, index = mcts(board, poss_moves, pipes_sim, T=T,
+        p1move, pi, p1tree, index, Q = mcts(board, poss_moves, pipes_sim, T=T,
                                          tree=p1tree)
         board.push(chess.Move.from_uci(p1move))
         game_record[0].append(board.fen())
         game_record[1].append(deepcopy(pi))
 
         print(board)
-        print('Player 1: ', move, '. ', p1move, '\n', sep='')
+        print('Player 1: ', move, '. ', p1move, ' | Q: ', Q, '\n', sep='')
 
         # Game ending conditions
         if board.is_game_over():
@@ -82,14 +85,14 @@ def self_play():
 
         # Player 2 move
         print('Player 2 is thinking...')
-        p2move, pi, p2tree, index = mcts(board, poss_moves, pipes_sim, T=T,
+        p2move, pi, p2tree, index, Q = mcts(board, poss_moves, pipes_sim, T=T,
                                          tree=p2tree)
         board.push(chess.Move.from_uci(p2move))
         game_record[0].append(board.fen())
         game_record[1].append(deepcopy(pi))
 
         print(board)
-        print('Player 2: ', move, '... ', p2move, '\n', sep='')
+        print('Player 2: ', move, '... ', p2move, ' | Q: ', Q, '\n', sep='')
 
         if board.is_game_over():
             if board.is_checkmate():
@@ -142,7 +145,7 @@ def self_play():
         for z in Z.tolist():
             game_record[2].append(z)
 
-    return game_record
+    return game_record, winner
 
 
 # This self-play function is used to determine the new generator model
@@ -153,18 +156,26 @@ def evaluation():
                      'Learning\chess\models\model_train.h5'
         model2path = 'C:\Glenn\Stuff\Machine ' \
                      'Learning\chess\models\model_live.h5'
+        print('Evaluation network plays as White. Current generator network '
+              'plays as Black.')
+        player_1 = 'Evaluator'
+        player_2 = 'Generator'
     else:
         model1path = 'C:\Glenn\Stuff\Machine ' \
                      'Learning\chess\models\model_live.h5'
         model2path = 'C:\Glenn\Stuff\Machine ' \
                      'Learning\chess\models\model_train.h5'
+        print('Current generator network plays as White. Evaluation network '
+              'plays as Black.')
+        player_1 = 'Generator'
+        player_2 = 'Evaluator'
 
     # Initialize neural network daemon for both players
     pipes_net1 = []
     pipes_sim1 = []
     pipes_net2 = []
     pipes_sim2 = []
-    for worker in range(cpu_count()):
+    for worker in range(cpu_count() - 2):
         # Player 1 pipes
         p1, p2 = Pipe()
         pipes_net1.append(p1)
@@ -189,22 +200,39 @@ def evaluation():
     move = 1
     T = 0.1  # Temperature coefficient is low for entire evaluation
 
+    # Start daemon
+    w, b, p = features(board.fen())
+    w = w.reshape(1, 8, 8, 1)
+    b = b.reshape(1, 8, 8, 1)
+    p = p.reshape(1, 1)
+    pipes_sim1[0].send([w, b, p])
+    pipes_sim2[0].send([w, b, p])
+    while not pipes_sim1[0].poll():
+        time.sleep(0.0000001)
+    while not pipes_sim2[0].poll():
+        time.sleep(0.0000001)
+    prior_, value_ = pipes_sim1[0].recv()
+    prior_, value_ = pipes_sim2[0].recv()
+
+    del prior_
+    del value_
+
     # Play game and record board state features for each move
     print('Game start.')
     while True:
         # Player 1 move
-        print('Player 1 is thinking...')
-        p1move, pi, p1tree, index = mcts(board, poss_moves, pipes_sim1, T=T,
+        print(player_1, 'is thinking...')
+        p1move, pi, p1tree, index, Q = mcts(board, poss_moves, pipes_sim1, T=T,
                                          tree=p1tree)
         board.push(chess.Move.from_uci(p1move))
         print(board)
-        print('Player 1: ', move, '. ', p1move, '\n', sep='')
+        print(player_1, ': ', move, '. ', p1move, ' | Q: ', Q, '\n', sep='')
 
         # Game ending conditions
         if board.is_game_over():
             if board.is_checkmate():
                 winner = 0
-                print('Winner: White.')
+                print('Winner:', player_1)
                 break
             else:
                 winner = -1
@@ -212,21 +240,20 @@ def evaluation():
                 break
 
         if move != 1:
-            # Update Player 2's decision tree with Player 1's move
             p2tree = p2tree.nodes[index]
 
         # Player 2 move
-        print('Player 2 is thinking...')
-        p2move, pi, p2tree, index = mcts(board, poss_moves, pipes_sim2, T=T,
+        print(player_2, 'is thinking...')
+        p2move, pi, p2tree, index, Q = mcts(board, poss_moves, pipes_sim2, T=T,
                                          tree=p2tree)
         board.push(chess.Move.from_uci(p2move))
         print(board)
-        print('Player 2: ', move, '... ', p2move, '\n', sep='')
+        print(player_2, ': ', move, '... ', p2move, ' | Q: ', Q, '\n', sep='')
 
         if board.is_game_over():
             if board.is_checkmate():
                 winner = 1
-                print('Winner: Black.')
+                print('Winner:', player_2)
                 break
             else:
                 winner = -1
@@ -258,7 +285,18 @@ def evaluation():
 
 
 def nn_daemon(modelpath, pipes_net):
+    import tensorflow as tf
+    import keras.backend.tensorflow_backend as ktf
     from keras.models import load_model
+
+    def get_session(gpu_fraction=0.45):
+        gpu_options = tf.GPUOptions(
+            per_process_gpu_memory_fraction=gpu_fraction,
+            allow_growth=True)
+        return tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+
+    ktf.set_session(get_session())
+
     model = load_model(filepath=modelpath)
 
     while True:
