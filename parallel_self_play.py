@@ -17,7 +17,7 @@ def self_play():
     game_start = time.time()
 
     # Initialize neural network daemon
-    modelpath = 'C:\Glenn\Stuff\Machine Learning\chess\models\model_live.h5'
+    modelpath = '.\models\model_live.h5'
     pipes_net = []
     pipes_sim = []
     for worker in range(cpu_count() - 1):
@@ -152,19 +152,15 @@ def self_play():
 def evaluation():
     train_color = randint(0, 1)
     if train_color == 0:
-        model1path = 'C:\Glenn\Stuff\Machine ' \
-                     'Learning\chess\models\model_train.h5'
-        model2path = 'C:\Glenn\Stuff\Machine ' \
-                     'Learning\chess\models\model_live.h5'
+        model1path = '.\models\model_train.h5'
+        model2path = '.\models\model_live.h5'
         print('Evaluation network plays as White. Current generator network '
               'plays as Black.')
         player_1 = 'Evaluator'
         player_2 = 'Generator'
     else:
-        model1path = 'C:\Glenn\Stuff\Machine ' \
-                     'Learning\chess\models\model_live.h5'
-        model2path = 'C:\Glenn\Stuff\Machine ' \
-                     'Learning\chess\models\model_train.h5'
+        model1path = '.\models\model_live.h5'
+        model2path = '.\models\model_train.h5'
         print('Current generator network plays as White. Evaluation network '
               'plays as Black.')
         player_1 = 'Generator'
