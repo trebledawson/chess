@@ -27,10 +27,9 @@ def train():
         kf = KFold(n_splits=15, shuffle=True)
         early = EarlyStopping(monitor='val_activation_25_loss', min_delta=0.001,
                               patience=10, verbose=1)
-        tensorboard = TensorBoard(log_dir='C:\Glenn\Stuff\Machine Learning\chess\TensorBoard')
+        tensorboard = TensorBoard(log_dir='.\TensorBoard')
 
-        filename = 'D:\Data\Dawson\Glenn\Backup\Machine ' \
-                   'Learning\chess\Data\GMdata' + str(file_num) + '.pickle'
+        filename = '.\Data\GMdata' + str(file_num) + '.pickle'
         file_object = open(filename, 'rb')
         game_record = pickle.load(file_object)
         file_object.close()
@@ -53,13 +52,11 @@ def train():
                 count += 1
 
             ktf.set_session(get_session())
-            model = load_model(filepath='C:\Glenn\Stuff\Machine '
-                                        'Learning\chess\models\model_train.h5')
+            model = load_model(filepath='.\models\model_train.h5')
             model.fit(feats, [pis, results], batch_size=200,
                       epochs=300, verbose=2, callbacks=[early, tensorboard],
                       validation_split=0.3)
-            model.save(filepath='C:\Glenn\Stuff\Machine '
-                                'Learning\chess\models\model_train.h5')
+            model.save(filepath='.\models\model_train.h5')
 
             del model
 
@@ -76,15 +73,13 @@ def train():
     '''
     # K-fold cross validation on random subset of training data
     subset = np.random.randint(1, high=181, size=1)
-    filename = 'D:\Data\Dawson\Glenn\Backup\Machine ' \
-               'Learning\chess\Data\GMdata' + str(subset) + '.pickle'
+    filename = '.\Data\GMdata' + str(subset) + '.pickle'
     file_object = open(filename, 'rb')
     game_record = pickle.load(file_object)
     file_object.close()
 
     kf = KFold(n_splits=65, shuffle=True)
-    model = load_model(filepath='C:\Glenn\Stuff\Machine '
-                                'Learning\chess\models\model_train.h5')
+    model = load_model(filepath='.\models\model_train.h5')
     scores = []
     for ignore_, train_idx in kf.split(game_record):
         del ignore_
