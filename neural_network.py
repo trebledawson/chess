@@ -214,11 +214,9 @@ def main():
                   metrics={'dense_1': 'accuracy', 'activation_37': 'accuracy'})
     model.summary()
 
-    model.save(filepath='C:\Glenn\Stuff\Machine '
-                        'Learning\chess\models\model_train.h5')
+    model.save(filepath='.\models\model_train.h5')
 
-    model.save(filepath='C:\Glenn\Stuff\Machine '
-                        'Learning\chess\models\model_live.h5')
+    model.save(filepath='.\models\model_live.h5')
 
 if __name__ == '__main__':
     main()
