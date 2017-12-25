@@ -22,10 +22,8 @@ def main():
     print(train_wins)
 
     if train_wins >= 55:
-        model = load_model('G:\Glenn\Misc\Machine '
-                           'Learning\Projects\chess\models\model_train.h5')
-        model.save(filepath='G:\Glenn\Misc\Machine '
-                            'Learning\Projects\chess\models\model_live.h5')
+        model = load_model('.\models\model_train.h5')
+        model.save(filepath='.\models\model_live.h5')
         del model
 
 if __name__ == '__main__':
