@@ -31,8 +31,7 @@ def generate_game(record):
 
 
 def update(game_record):
-    file_Name = "C:\Glenn\Stuff\Machine " \
-                "Learning\chess\\records\\brownie24_self_play_records.pickle"
+    file_Name = ".\\records\\brownie24_self_play_records.pickle"
     #if games != 0:
     fileObject = open(file_Name, 'rb')
     game_records = pickle.load(fileObject)
