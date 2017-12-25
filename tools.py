@@ -50,77 +50,89 @@ def features(boardfen):
         except ValueError:
             return s
 
-    # Convert board to array
-    white = np.zeros(64).astype('float32')
-    black = np.zeros(64).astype('float32')
+    # Convert board to piece arrays
+    wp = np.zeros(64).astype('float32')
+    wn = np.zeros(64).astype('float32')
+    wb = np.zeros(64).astype('float32')
+    wr = np.zeros(64).astype('float32')
+    wq = np.zeros(64).astype('float32')
+    wk = np.zeros(64).astype('float32')
+    bp = np.zeros(64).astype('float32')
+    bn = np.zeros(64).astype('float32')
+    bb = np.zeros(64).astype('float32')
+    br = np.zeros(64).astype('float32')
+    bq = np.zeros(64).astype('float32')
+    bk = np.zeros(64).astype('float32')
+    empty = np.zeros(64).astype('float32')
     count = 0
     for letter in fen[0]:
         letter = int_if_int(letter)
         if letter in range(9):
             while letter > 0:
-                white[count] = 0
-                black[count] = 0
+                empty[count] = 1
                 letter -= 1
                 count += 1
         elif letter == 'p':
-            white[count] = 0
-            black[count] = 1
+            bp[count] = 1
             count += 1
         elif letter == 'P':
-            white[count] = 1
-            black[count] = 0
+            wp[count] = 1
             count += 1
         elif letter == '/':
             continue
         elif letter == 'b':
-            white[count] = 0
-            black[count] = 2
+            bb[count] = 1
             count += 1
         elif letter == 'B':
-            white[count] = 2
-            black[count] = 0
+            wb[count] = 1
             count += 1
         elif letter == 'n':
-            white[count] = 0
-            black[count] = 3
+            bn[count] = 1
             count += 1
         elif letter == 'N':
-            white[count] = 3
-            black[count] = 0
+            wn[count] = 1
             count += 1
         elif letter == 'r':
-            white[count] = 0
-            black[count] = 4
+            br[count] = 1
             count += 1
         elif letter == 'R':
-            white[count] = 4
-            black[count] = 0
+            wr[count] = 1
             count += 1
         elif letter == 'q':
-            white[count] = 0
-            black[count] = 5
+            bq[count] = 1
             count += 1
         elif letter == 'Q':
-            white[count] = 5
-            black[count] = 0
+            wq[count] = 1
             count += 1
         elif letter == 'k':
-            white[count] = 0
-            black[count] = 6
+            bk[count] = 1
             count += 1
         elif letter == 'K':
-            white[count] = 6
-            black[count] = 0
+            wk[count] = 1
             count += 1
-    white = white.reshape(8, 8, 1)
-    black = black.reshape(8, 8, 1)
+    wp = wp.reshape(1, 8, 8)
+    wn = wn.reshape(1, 8, 8)
+    wb = wb.reshape(1, 8, 8)
+    wr = wr.reshape(1, 8, 8)
+    wq = wq.reshape(1, 8, 8)
+    wk = wk.reshape(1, 8, 8)
+    bp = bp.reshape(1, 8, 8)
+    bn = bn.reshape(1, 8, 8)
+    bb = bb.reshape(1, 8, 8)
+    br = br.reshape(1, 8, 8)
+    bq = bq.reshape(1, 8, 8)
+    bk = bk.reshape(1, 8, 8)
+    empty = empty.reshape(1, 8, 8)
 
     # Determine current player
-    player = np.zeros(1)
+    player = np.zeros((1, 8, 8)).astype('float32')
     if fen[1] == 'b':
         player += 1
 
-    return white, black, player
+    features = np.concatenate((wp, wn, wb, wr, wq, wk, bp, bn, bb, br, bq, bk,
+                               empty, player), axis=0)
+
+    return features
 
 def all_possible_moves():
     moves = []

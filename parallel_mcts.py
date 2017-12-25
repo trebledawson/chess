@@ -10,26 +10,24 @@ import time
 from multiprocessing import Process, Queue
 from copy import deepcopy
 from tools import features, get_move, SearchTree, get_pi
+from sklearn.metrics import mean_squared_error as mse
 
 
 def mcts(board, poss_moves, pipes_sim, **kwargs):
     start = time.time()
     C = kwargs.get('C', 1.4)
-    thinking_time = kwargs.get('thinking_time', 3)
+    thinking_time = kwargs.get('thinking_time', 10)
     T = kwargs.get('T', 0.0001)
     tree = kwargs.get('tree', SearchTree())
     state = deepcopy(board)
     legal = sorted([move.uci() for move in board.generate_legal_moves()])
+    sleep = 0.000000001
 
-    w, b, p = features(board.fen())
-    w = w.reshape(1, 8, 8, 1)
-    b = b.reshape(1, 8, 8, 1)
-    p = p.reshape(1, 1)
-    pipes_sim[0].send([w, b, p])
-    while not pipes_sim[0].poll():
-        time.sleep(0.001)
+    feats = features(board.fen())
+    feats = feats.reshape(1, 14, 8, 8)
+    pipes_sim[0].send(feats)
+    pipes_sim[0].poll(timeout=None)
     priors, value = pipes_sim[0].recv()
-    priors = np.ravel(priors)
 
     # Add Dirichlet noise to priors in root node
     noise = np.ravel(np.random.dirichlet([0.03, 0.03],
@@ -70,7 +68,7 @@ def mcts(board, poss_moves, pipes_sim, **kwargs):
     while len(simulations) < len(sims):
         trees.append(tree_queue.get())
         simulations.append(sim_queue.get())
-        time.sleep(0.00001)
+        time.sleep(sleep)
 
     print('Simulations:', sum(simulations), '| Thinking time:', time.time() -
           start, 'seconds.')
@@ -94,8 +92,11 @@ def mcts(board, poss_moves, pipes_sim, **kwargs):
     else:
         pi = priors
         move = np.random.choice(legal)
+
+    pi_move = pi[poss_moves.index(move)]
     index = legal.index(move)
 
+    print('MSE:', mse(pi, priors))
     # Prune tree for reuse in future searches
     tree = tree.nodes[index]
 
@@ -103,21 +104,18 @@ def mcts(board, poss_moves, pipes_sim, **kwargs):
     if tree.data[2] == 0:
         state.push(chess.Move.from_uci(move))
 
-        w, b, p = features(state.fen())
-        w = w.reshape(1, 8, 8, 1)
-        b = b.reshape(1, 8, 8, 1)
-        p = p.reshape(1, 1)
-        pipes_sim[0].send([w, b, p])
-        while not pipes_sim[0].poll():
-            time.sleep(0.001)
+        feats = features(board.fen())
+        feats = feats.reshape(1, 14, 8, 8)
+        pipes_sim[0].send(feats)
+        pipes_sim[0].poll(timeout=None)
         priors, value = pipes_sim[0].recv()
-        priors = np.ravel(priors)
 
         legal = [move_.uci() for move_ in state.generate_legal_moves()]
         indices = [poss_moves.index(move_) for move_ in legal]
         for move_, san in zip(range(len(legal)), legal):
             nodes_update(tree, priors, indices, move_, san)
 
+    print('N:', tree.data[0], '| P:', tree.data[3], '| Pi:', pi_move)
     return move, pi, tree, index, tree.data[2]
 
 
@@ -125,7 +123,7 @@ def parallel_simulation(tree, state, C, poss_moves, pipe_sim, start,
                         thinking_time, tree_queue, sim_queue):
     tree_p = deepcopy(tree)
     simulations = 0
-    while simulations < 1 or time.time() - start < thinking_time:
+    while simulations < 5: #and time.time() - start < thinking_time:
         tree_p = iteration(tree_p, state, C, poss_moves, pipe_sim)
         simulations += 1
     tree_queue.put(tree_p)
@@ -141,6 +139,7 @@ def iteration(tree, board, C, poss_moves, pipe_sim, **kwargs):
     state_indices = []
     nodes = [node]
     depth = 0
+    sleep = 0.000000001
 
     # Traverse tree until end of game or search depth is reached
     while not is_winner and depth < search_depth:
@@ -166,16 +165,11 @@ def iteration(tree, board, C, poss_moves, pipe_sim, **kwargs):
         # Evaluate and expand
         legal = sorted([move.uci() for move in state.generate_legal_moves()])
         indices = [poss_moves.index(move) for move in legal]
-        w, b, p = features(state.fen())
-        w = w.reshape(1, 8, 8, 1)
-        b = b.reshape(1, 8, 8, 1)
-        p = p.reshape(1, 1)
-        pipe_sim.send([w, b, p])
-        while not pipe_sim.poll():
-            time.sleep(0.0000001)
+        feats = features(board.fen())
+        feats = feats.reshape(1, 14, 8, 8)
+        pipe_sim.send(feats)
+        pipe_sim.poll(timeout=None)
         priors, value = pipe_sim.recv()
-        priors = np.ravel(priors)
-        value = value[0][0]
 
         for move, san in zip(range(len(legal)), legal):
             nodes_update(node, priors, indices, move, san)

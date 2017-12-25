@@ -6,6 +6,8 @@ import chess
 import time
 from random import randint
 from parallel_mcts import mcts
+#from numba_mcts import mcts
+#from cchess_tools import mcts
 from tools import all_possible_moves, SearchTree, features
 from copy import deepcopy
 from multiprocessing import Process, Pipe, cpu_count
@@ -36,11 +38,9 @@ def self_play():
     T = 1
 
     # Start daemon
-    w, b, p = features(board.fen())
-    w = w.reshape(1, 8, 8, 1)
-    b = b.reshape(1, 8, 8, 1)
-    p = p.reshape(1, 1)
-    pipes_sim[0].send([w, b, p])
+    feats = features(board.fen())
+    feats = feats.reshape(1, 14, 8, 8)
+    pipes_sim[0].send(feats)
     while not pipes_sim[0].poll():
         time.sleep(0.0000001)
     prior_, value_ = pipes_sim[0].recv()
@@ -201,12 +201,10 @@ def evaluation():
     T = 0.1  # Temperature coefficient is low for entire evaluation
 
     # Start daemon
-    w, b, p = features(board.fen())
-    w = w.reshape(1, 8, 8, 1)
-    b = b.reshape(1, 8, 8, 1)
-    p = p.reshape(1, 1)
-    pipes_sim1[0].send([w, b, p])
-    pipes_sim2[0].send([w, b, p])
+    feats = features(board.fen())
+    feats = feats.reshape(1, 14, 8, 8)
+    pipes_sim1[0].send(feats)
+    pipes_sim2[0].send(feats)
     while not pipes_sim1[0].poll():
         time.sleep(0.0000001)
     while not pipes_sim2[0].poll():
@@ -305,4 +303,6 @@ def nn_daemon(modelpath, pipes_net):
                 continue
             state_features = pipe.recv()
             priors, value = model.predict(state_features, verbose=0)
+            priors = np.ravel(priors)
+            value = value[0][0]
             pipe.send((priors, value))
