@@ -22,8 +22,7 @@ def main():
     from keras.models import load_model
     from keras.callbacks import EarlyStopping
 
-    file_Name = "C:\Glenn\Stuff\Machine " \
-                "Learning\chess\\records\\brownie24_self_play_records.pickle"
+    file_Name = ".\\records\\brownie24_self_play_records.pickle"
     fileObject = open(file_Name, 'rb')
     game_records = pickle.load(fileObject)
     fileObject.close()
@@ -50,13 +49,11 @@ def main():
             results[sample] = game_records[2][sample_indices[sample]]
             sample += 1
 
-        training_model = load_model(filepath='C:\Glenn\Stuff\Machine '
-                                             'Learning\chess\models\model_train.h5')
+        training_model = load_model(filepath='.\models\model_train.h5')
         training_model.fit([ws, bs, ps], [pis, results], batch_size=200,
                            epochs=300, verbose=2, callbacks=[early],
                            validation_split=0.3)
-        training_model.save(filepath='C:\Glenn\Stuff\Machine '
-                            'Learning\chess\models\model_train.h5')
+        training_model.save(filepath='.\models\model_train.h5')
         del training_model
 
 def evaluate():
@@ -69,10 +66,8 @@ def evaluate():
 
     if train_wins >= 50:
         from keras.models import load_model
-        model = load_model('G:\Glenn\Misc\Machine '
-                           'Learning\Projects\chess\models\model_train.h5')
-        model.save(filepath='G:\Glenn\Misc\Machine '
-                            'Learning\Projects\chess\models\model_live.h5')
+        model = load_model('.\models\model_train.h5')
+        model.save(filepath='.\models\model_live.h5')
         del model
 
 
