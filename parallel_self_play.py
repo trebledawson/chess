@@ -1,6 +1,3 @@
-"""
-Self-play arena for Brownie24.
-"""
 import numpy as np
 import chess
 import time
