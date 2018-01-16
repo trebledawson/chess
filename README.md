@@ -14,6 +14,8 @@
 # Using cleaning.py and GM_training.py
 * Required: GMbothall.pgn (found here: https://chess-db.com/public/downloads/gamesfordownload.jsp)
 * Note: This will generate a large number of large text files, on the order of 200 GB. 
+* Run cleaning.py
+* Run GM\_training.py
 
 # Self-Play
 * playground.py will generate games by having the best current model (model\_live.h5) play against itself
