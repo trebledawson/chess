@@ -188,7 +188,7 @@ def main():
     #probabilities = Activation('softmax')(p5)
 
     # Value layers
-    v1 = Conv2D(64, 1, activity_regularizer=l2(l=0.0001))(r10g)
+    v1 = Conv2D(64, 1, activity_regularizer=l2(l=0.0001))(r15g)
     v2 = BatchNormalization(axis=1, momentum=0.9, epsilon=0.00001)(v1)
     v3 = Activation('relu')(v2)
     v4 = Flatten()(v3)
