@@ -25,7 +25,7 @@ def train():
     for file_num in files:
         print('Training set:', training_set)
         kf = KFold(n_splits=15, shuffle=True)
-        early = EarlyStopping(monitor='val_activation_25_loss', min_delta=0.001,
+        early = EarlyStopping(monitor='val_activation_37_loss', min_delta=0.001,
                               patience=10, verbose=1)
         tensorboard = TensorBoard(log_dir='.\TensorBoard')
 
